@@ -13,9 +13,13 @@ This executable requires the following environment variable to be set.
  `OPENAI_API_KEY` - OpenAI API key
  `GPT4_CLI_PATH_PREFIX` - Directory path to this folder
 
- #### 2. Install dependencies
+ #### 2. Create venv and install dependencies
 
- `pip3 install -r requirements.txt`
+```
+python3 -m venv .
+source bin/activate
+pip3 install -r requirements.txt
+```
 
  #### 3. Make globally accessible
 
