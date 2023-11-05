@@ -2,42 +2,40 @@ import os
 import sys
 import logging
 import time
-
-# patch to mute urllib3 warning, requirement for openai
 import warnings
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     import openai
 
-
 CHAT_MODEL = "gpt-4"
 LOG_LEVEL = logging.INFO
+LOG_FORMAT = 'Level=%(levelname)s, Function=%(funcName)s, Time=%(asctime)s, Message=%(message)s'
+
 
 def setup_logging():
-    log_format = 'Level=%(levelname)s, Function=%(funcName)s, Time=%(asctime)s, Message=%(message)s'
-    logging.basicConfig(level=LOG_LEVEL, format=log_format, datefmt='%m/%d %I:%M:%S %p')
+    logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT, datefmt='%m/%d %I:%M:%S %p')
+
 
 def init_openai():
-    # check if OPENAI env var exists
-    OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-    if OPENAI_API_KEY == None:
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    if openai_api_key is None:
         raise Exception("OPENAI_API_KEY not defined")
-    openai.api_key = OPENAI_API_KEY
-    openai.Engine.list()  # check we have authenticated
+    openai.api_key = openai_api_key
+    openai.Engine.list()
 
-def query_openAI(prompt):
+
+def query_openai(prompt):
     completion = openai.ChatCompletion.create(
         model=CHAT_MODEL,
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": f"{prompt}"}
+            {"role": "user", "content": prompt}
         ],
         temperature=0,
-        max_tokens=400,
+        max_tokens=1600,
         top_p=1,
         frequency_penalty=0,
         presence_penalty=0,
-        stop=None,
         stream=True
     )
 
@@ -52,46 +50,42 @@ def query_openAI(prompt):
     print("\n")
     return completion
 
+
 class PromptConfig:
     def __init__(self, user_input):
-        self.input_str: str = user_input # can either be a prompt string or a path to a file
+        self.input_str = user_input
+        self.is_file = False
+        self.file_path = ""
+        self.file_contents = ""
+        self._check_if_input_is_file()
 
-        # file related properties
-        self.is_file: bool = False
-        self.file_path: str = ""
-        self.file_contents: str = ""
-
-        self.check_if_input_is_file()
-
-    def check_if_input_is_file(self):
+    def _check_if_input_is_file(self):
         try:
-            with open(self.input_str) as f:
+            with open(self.input_str) as file:
                 self.is_file = True
                 self.file_path = self.input_str
-                self.file_contents = f.read()
+                self.file_contents = file.read()
         except FileNotFoundError:
             pass
 
     def get_prompt(self):
-        return self.input_str if self.is_file is False else self.file_contents
+        return self.file_contents if self.is_file else self.input_str
 
 
 def main():
     setup_logging()
     init_openai()
-    args = sys.argv
-    if len(args) == 1:
-        print("Please provide a prompt string or link to file with prompt")
-        exit(1)
 
-    user_input = args[1]
-    if len(args) >= 3:
-        user_input = " ".join(args[1:])
+    if len(sys.argv) == 1:
+        raise SystemExit("Please provide a prompt string or link to file with prompt")
 
-    prompt_config = PromptConfig(user_input) # either a prompt string or a file
+    user_input = " ".join(sys.argv[1:])
+    prompt_config = PromptConfig(user_input)
     logging.debug(f"user_input: {prompt_config.get_prompt()}")
 
-    query_openAI(prompt_config.get_prompt())
+    query_openai(prompt_config.get_prompt())
     print("all done!")
 
-main()
+
+if __name__ == "__main__":
+    main()
