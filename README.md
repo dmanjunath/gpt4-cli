@@ -2,7 +2,9 @@
 
 ## Overview
 
-This Python script is designed to interact with OpenAI's GPT-4 model. It takes a user input, either as a string or a file, and sends it to the GPT-4 model as a prompt. The model's response is then printed to the console.
+This Python script is designed to interact with OpenAI's GPT-4 model from the CLI. I wrote this to combine it with the power of bash and be able to concat files, generate data etc and send it to GPT-4 via the API directly instead of copy/pasting into the app. Also allows access to GPT-4 without the monthly subscription 🙂.
+
+It takes a user input, either as a string or a file, and sends it to the GPT-4 model as a prompt. The model's response is then printed to the console.
 
 ## Installation
 
