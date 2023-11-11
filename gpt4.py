@@ -1,11 +1,11 @@
 import os
 import sys
 import logging
-import time
+import argparse
 import warnings
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    import openai
+    from openai import OpenAI
 
 CHAT_MODEL = "gpt-4"
 LOG_LEVEL = logging.INFO
@@ -20,12 +20,13 @@ def init_openai():
     openai_api_key = os.getenv("OPENAI_API_KEY")
     if openai_api_key is None:
         raise Exception("OPENAI_API_KEY not defined")
-    openai.api_key = openai_api_key
-    openai.Engine.list()
+    client = OpenAI()
+    return client
+    # openai.Engine.list()
 
 
-def query_openai(prompt):
-    completion = openai.ChatCompletion.create(
+def query_openai(client, prompt):
+    completion = client.chat.completions.create(
         model=CHAT_MODEL,
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
@@ -39,51 +40,54 @@ def query_openai(prompt):
         stream=True
     )
 
-    # adapted from https://github.com/tmgthb/Stream-responses
     answer = ''
-    for event in completion:
+    for part in completion:
+        answer = (part.choices[0].delta.content or "")
         print(answer, end='', flush=True)
-        event_text = event['choices'][0]['delta']
-        answer = event_text.get('content', '')
-        time.sleep(0.1)
 
     print("\n")
     return completion
 
 
 class PromptConfig:
-    def __init__(self, user_input):
-        self.input_str = user_input
+    def __init__(self):
         self.is_file = False
         self.file_path = ""
         self.file_contents = ""
+        self.thread = ""
+        self.parse_args()
         self._check_if_input_is_file()
+
+    def parse_args(self):
+        parser = argparse.ArgumentParser(description='GPT4 CLI.')
+        parser.add_argument('user_input', type=str, help='Enter prompt text or path to file with prompt')
+        parser.add_argument('--thread', type=str, help='Optional thread name')
+
+        args = parser.parse_args()
+        self.user_input = args.user_input
+        self.thread = args.thread
 
     def _check_if_input_is_file(self):
         try:
-            with open(self.input_str) as file:
+            with open(self.user_input) as file:
                 self.is_file = True
-                self.file_path = self.input_str
+                self.file_path = self.user_input
                 self.file_contents = file.read()
         except FileNotFoundError:
             pass
 
     def get_prompt(self):
-        return self.file_contents if self.is_file else self.input_str
+        return self.file_contents if self.is_file else self.user_input
 
 
 def main():
     setup_logging()
-    init_openai()
+    client = init_openai()
 
-    if len(sys.argv) == 1:
-        raise SystemExit("Please provide a prompt string or link to file with prompt")
-
-    user_input = " ".join(sys.argv[1:])
-    prompt_config = PromptConfig(user_input)
+    prompt_config = PromptConfig()
     logging.debug(f"user_input: {prompt_config.get_prompt()}")
 
-    query_openai(prompt_config.get_prompt())
+    query_openai(client, prompt_config.get_prompt())
     print("all done!")
 
 
