@@ -1,5 +1,4 @@
 import os
-import sys
 import logging
 import argparse
 import warnings
@@ -8,7 +7,7 @@ with warnings.catch_warnings():
     from openai import OpenAI
 
 CHAT_MODEL = "gpt-4"
-LOG_LEVEL = logging.INFO
+LOG_LEVEL = logging.DEBUG
 LOG_FORMAT = 'Level=%(levelname)s, Function=%(funcName)s, Time=%(asctime)s, Message=%(message)s'
 
 
@@ -22,7 +21,6 @@ def init_openai():
         raise Exception("OPENAI_API_KEY not defined")
     client = OpenAI()
     return client
-    # openai.Engine.list()
 
 
 def query_openai(client, prompt):
@@ -63,9 +61,13 @@ class PromptConfig:
         parser.add_argument('user_input', type=str, help='Enter prompt text or path to file with prompt')
         parser.add_argument('--thread', type=str, help='Optional thread name')
 
-        args = parser.parse_args()
-        self.user_input = args.user_input
+        # hack to combine all non-recognized args into user_input
+        args, unknown = parser.parse_known_args()
+        self.user_input = (args.user_input + ' ' + ' '.join(unknown).strip()).strip()
+        logging.debug(f"user_input: {self.user_input}")
+        
         self.thread = args.thread
+        logging.debug(f"thread: {self.thread}")
 
     def _check_if_input_is_file(self):
         try:
@@ -73,12 +75,37 @@ class PromptConfig:
                 self.is_file = True
                 self.file_path = self.user_input
                 self.file_contents = file.read()
-        except FileNotFoundError:
+        except FileNotFoundError as e:
+            # logging.debug("file not found", e)
             pass
 
     def get_prompt(self):
         return self.file_contents if self.is_file else self.user_input
 
+class DataStore:
+    def __init__(self):
+        self.filename = "KEY_TO_STRING.csv"
+
+    def store(self, id, string):
+        with open(self.filename, 'a') as f:
+            f.write(f'{id},{string}\n')
+
+    def retrieve(self, id):
+        with open(self.filename, 'r') as f:
+            for line in f:
+                line_id, line_string = line.strip().split(',')
+                if line_id == id:
+                    return line_string
+        return None
+
+def map_thread_to_id(thread, client):
+    data_store = DataStore()
+    id = data_store.retrieve(thread)
+    if id is None:
+        empty_thread = client.beta.threads.create()
+        return empty_thread.id
+    
+    return id
 
 def main():
     setup_logging()
@@ -88,7 +115,6 @@ def main():
     logging.debug(f"user_input: {prompt_config.get_prompt()}")
 
     query_openai(client, prompt_config.get_prompt())
-    print("all done!")
 
 
 if __name__ == "__main__":
