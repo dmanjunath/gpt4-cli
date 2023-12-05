@@ -26,7 +26,7 @@ pip3 install -r requirements.txt
  #### 3. Make globally accessible
 
 Move into /usr/local/bin
- `ln -s $GPT4_CLI_PATH_PREFIX/src/gpt4 /usr/local/bin/gpt4`
+ `ln -s $GPT4_CLI_PATH_PREFIX/gpt4 /usr/local/bin/gpt4`
 
 ## Usage
 

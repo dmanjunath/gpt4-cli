@@ -7,7 +7,7 @@ with warnings.catch_warnings():
     from openai import OpenAI
 
 CHAT_MODEL = "gpt-4"
-LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.INFO
 LOG_FORMAT = 'Level=%(levelname)s, Function=%(funcName)s, Time=%(asctime)s, Message=%(message)s'
 
 
